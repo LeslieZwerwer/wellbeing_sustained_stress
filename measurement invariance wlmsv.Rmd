@@ -1,0 +1,529 @@
+---
+title: "04_emotional_lon_longitudinal_measurement_invar"
+author: "dr. LR Zwerwer"
+date: "2026-08-18"
+output: word_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "C:/Users/P269380/Documents/GOR covid-19/")
+```
+
+## Loading packages and data
+
+
+
+```{r}
+rm(list = ls())
+
+library(tidyverse)
+library(lavaan) 
+library(semTools)
+library(tidySEM)
+library(flextable)
+library(officer)
+library(knitr)
+source("./gor-covid-19/final scripts/scripts/check_admissibility.R")
+
+# Load the data
+
+df <- read_csv("./gor-covid-19/final scripts/data/03_data_wide.csv")
+```
+
+## Configural model
+
+```{r}
+
+# ============================================================
+# 1. DEFINE WAVES AND ORDINAL ITEMS
+# ============================================================
+
+waves <- c(3, 4, 5, 6, 7, 8, 10, 12)
+
+ord_items <- unlist(
+  lapply(
+    waves,
+    function(w) paste0("JG_Eenzaam", 1:6, "_w", w)
+  )
+)
+
+ord_items
+
+```
+
+```{r}
+# ============================================================
+# 2. BASE CONFIGURAL MODEL
+# ============================================================
+
+
+base.model <- '
+
+  # ----- Factors per wave -----
+
+  el_w3  =~ JG_Eenzaam1_w3  + JG_Eenzaam2_w3  + JG_Eenzaam3_w3 +
+            JG_Eenzaam4_w3  + JG_Eenzaam5_w3  + JG_Eenzaam6_w3
+
+  el_w4  =~ JG_Eenzaam1_w4  + JG_Eenzaam2_w4  + JG_Eenzaam3_w4 +
+            JG_Eenzaam4_w4  + JG_Eenzaam5_w4  + JG_Eenzaam6_w4
+
+  el_w5  =~ JG_Eenzaam1_w5  + JG_Eenzaam2_w5  + JG_Eenzaam3_w5 +
+            JG_Eenzaam4_w5  + JG_Eenzaam5_w5  + JG_Eenzaam6_w5
+
+  el_w6  =~ JG_Eenzaam1_w6  + JG_Eenzaam2_w6  + JG_Eenzaam3_w6 +
+            JG_Eenzaam4_w6  + JG_Eenzaam5_w6  + JG_Eenzaam6_w6
+
+  el_w7  =~ JG_Eenzaam1_w7  + JG_Eenzaam2_w7  + JG_Eenzaam3_w7 +
+            JG_Eenzaam4_w7  + JG_Eenzaam5_w7  + JG_Eenzaam6_w7
+
+  el_w8  =~ JG_Eenzaam1_w8  + JG_Eenzaam2_w8  + JG_Eenzaam3_w8 +
+            JG_Eenzaam4_w8  + JG_Eenzaam5_w8  + JG_Eenzaam6_w8
+
+  el_w10 =~ JG_Eenzaam1_w10 + JG_Eenzaam2_w10 + JG_Eenzaam3_w10 +
+            JG_Eenzaam4_w10 + JG_Eenzaam5_w10 + JG_Eenzaam6_w10
+
+  el_w12 =~ JG_Eenzaam1_w12 + JG_Eenzaam2_w12 + JG_Eenzaam3_w12 +
+            JG_Eenzaam4_w12 + JG_Eenzaam5_w12 + JG_Eenzaam6_w12
+
+
+  # ----- Within-wave residual covariance item 1 ~~ item 4 -----
+
+  JG_Eenzaam1_w3  ~~ JG_Eenzaam4_w3
+  JG_Eenzaam1_w4  ~~ JG_Eenzaam4_w4
+  JG_Eenzaam1_w5  ~~ JG_Eenzaam4_w5
+  JG_Eenzaam1_w6  ~~ JG_Eenzaam4_w6
+  JG_Eenzaam1_w7  ~~ JG_Eenzaam4_w7
+  JG_Eenzaam1_w8  ~~ JG_Eenzaam4_w8
+  JG_Eenzaam1_w10 ~~ JG_Eenzaam4_w10
+  JG_Eenzaam1_w12 ~~ JG_Eenzaam4_w12
+  
+'
+
+```
+
+
+
+```{r}
+# ============================================================
+# 3. TELL semTools WHICH FACTORS ARE REPEATED MEASURES
+# ============================================================
+
+longFacNames <- list(
+  loneliness = c(
+    "el_w3",
+    "el_w4",
+    "el_w5",
+    "el_w6",
+    "el_w7",
+    "el_w8",
+    "el_w10",
+    "el_w12"
+  )
+)
+```
+
+
+```{r}
+
+# ============================================================
+# 4. CONFIGURAL MODEL
+# ============================================================
+
+syntax.config <- measEq.syntax(
+  configural.model = base.model,
+  data = df,
+  ordered = ord_items,
+  ID.fac = "std.lv",
+  ID.cat = "Wu.Estabrook.2016",
+  longFacNames = longFacNames,
+  long.equal = "",
+  auto = "all"
+)
+
+# Inspect generated syntax
+summary(syntax.config)
+cat(as.character(syntax.config))
+```
+
+```{r}
+# Fit configural model
+config.fit <- cfa(
+  model = as.character(syntax.config),
+  data = df,
+  estimator = "WLSMV",
+  ordered = ord_items,
+  missing = "pairwise"
+)
+
+
+summary(config.fit)
+```
+
+
+Check the modindices 
+
+```{r}
+print(head(modindices(config.fit, sort. = TRUE), 30))
+```
+
+Check admissability of the solution
+
+```{r}
+print(lavInspect(config.fit, "post.check"))
+res <- check_admissibility(config.fit)
+print(res)
+```
+
+
+```{r}
+# ============================================================
+# 5. THRESHOLD-EQUALITY MODEL
+# ============================================================
+
+syntax.threshold <- measEq.syntax(
+  configural.model = base.model,
+  data = df,
+  ordered = ord_items,
+  ID.fac = "std.lv",
+  ID.cat = "Wu.Estabrook.2016",
+  longFacNames = longFacNames,
+  long.equal = "thresholds",
+  auto = "all"
+)
+
+summary(syntax.threshold)
+cat(as.character(syntax.threshold))
+```
+
+
+```{r}
+threshold.fit <- cfa(
+  model = as.character(syntax.threshold),
+  data = df,
+  estimator = "WLSMV",
+  ordered = ord_items,
+  missing = "pairwise"
+)
+
+
+summary(threshold.fit)
+```
+
+
+Check admissability of the solution
+
+```{r}
+print(lavInspect(threshold.fit, "post.check"))
+res <- check_admissibility(threshold.fit)
+print(res)
+```
+
+
+```{r}
+
+# ============================================================
+# 6. METRIC INVARIANCE
+# ============================================================
+#
+# Equal thresholds + equal loadings
+
+syntax.metric <- measEq.syntax(
+  configural.model = base.model,
+  data = df,
+  ordered = ord_items,
+  ID.fac = "std.lv",
+  ID.cat = "Wu.Estabrook.2016",
+  longFacNames = longFacNames,
+  long.equal = c(
+    "thresholds",
+    "loadings"
+  ),
+  auto = "all"
+)
+
+summary(syntax.metric)
+cat(as.character(syntax.metric))
+```
+
+```{r}
+metric.fit <- cfa(
+  model = as.character(syntax.metric),
+  data = df,
+  estimator = "WLSMV",
+  ordered = ord_items,
+  missing = "pairwise"
+)
+
+
+#metric.fit <- readRDS("./gor-covid-19/final scripts/models/metric_model_loneliness.rds")
+
+summary(metric.fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+Check admissability
+
+
+```{r}
+print(lavInspect(metric.fit, "post.check"))
+res <- check_admissibility(metric.fit)
+print(res)
+```
+
+Compare fit with threshold model 
+
+```{r}
+fit.comparison.metric <- compareFit(threshold.fit, metric.fit)
+summary(fit.comparison.metric)
+```
+
+
+
+```{r}
+
+
+# ============================================================
+# 7. SCALAR / STRONG INVARIANCE
+# ============================================================
+#
+# Equal thresholds + loadings + intercepts
+
+syntax.scalar <- measEq.syntax(
+  configural.model = base.model,
+  data = df,
+  ordered = ord_items,
+  ID.fac = "std.lv",
+  ID.cat = "Wu.Estabrook.2016",
+  longFacNames = longFacNames,
+  long.equal = c(
+    "thresholds",
+    "loadings",
+    "intercepts"
+  ),
+  auto = "all"
+)
+
+summary(syntax.scalar)
+cat(as.character(syntax.scalar))
+```
+
+
+```{r}
+scalar.fit <- cfa(
+  model = as.character(syntax.scalar),
+  data = df,
+  estimator = "WLSMV",
+  ordered = ord_items,
+  missing = "pairwise"
+)
+
+
+#scalar.fit <- readRDS("./gor-covid-19/final scripts/models/scalar_model_loneliness.rds")
+summary(scalar.fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+
+Check admissibility 
+
+```{r}
+print(lavInspect(scalar.fit, "post.check"))
+
+res <- check_admissibility(scalar.fit)
+print(res)
+```
+
+Compare the metric fit with the scalar fit
+
+```{r}
+fit.comparison.metric <- compareFit(metric.fit, scalar.fit)
+summary(fit.comparison.metric)
+```
+
+##Comparing all fits for table 
+```{r}
+comp <- compareFit(config.fit, threshold.fit, metric.fit, scalar.fit)
+summary(comp)
+```
+
+##Tables with loadings etc. 
+
+```{r, results='asis'}
+loneliness_models <- list(
+  config    = config.fit,
+  threshold = threshold.fit,
+  metric    = metric.fit,
+  scalar    = scalar.fit
+)
+
+saveRDS(
+  loneliness_models,
+  "./gor-covid-19/final scripts/models/loneliness_1factor_models.rds"
+)
+
+cat("## Configural model\n\n")
+config_table <- table_results(
+  config.fit,
+  columns = c(
+    "label",
+    "est_sig",
+    "se",
+    "pval",
+    "confint"
+  ),
+  digits = 3
+)
+
+
+
+ft_config <- flextable(config_table) |>
+  theme_booktabs() |>
+  autofit() |>
+  align(align = "center", part = "all") |>
+  align(j = 1, align = "left", part = "all") |>
+  bold(part = "header") |>
+  valign(valign = "center", part = "all")
+
+
+save_as_docx(
+  "Configural model" = ft_config,
+  path = "./gor-covid-19/final scripts/Tables/configural_model_table_loneliness.docx"
+)
+print(ft_config)
+```
+
+
+
+```{r, results='asis'}
+cat("## Threshold model\n\n")
+threshold_table <- table_results(
+  threshold.fit,
+  columns = c(
+    "label",
+    "est_sig",
+    "se",
+    "pval",
+    "confint"
+  ),
+  digits = 3
+)
+
+
+
+ft_threshold <- flextable(threshold_table) |>
+  theme_booktabs() |>
+  autofit() |>
+  align(align = "center", part = "all") |>
+  align(j = 1, align = "left", part = "all") |>
+  bold(part = "header") |>
+  valign(valign = "center", part = "all")
+
+
+save_as_docx(
+  "Threshold model" = ft_threshold,
+  path = "./gor-covid-19/final scripts/Tables/threshold_model_table_loneliness.docx"
+)
+print(ft_config)
+```
+
+
+
+```{r, results='asis'}
+cat("## Metric model\n\n")
+metric_table <- table_results(
+  metric.fit,
+  columns = c(
+    "label",
+    "est_sig",
+    "se",
+    "pval",
+    "confint"
+  ),
+  digits = 3
+)
+
+
+ft_metric <- flextable(metric_table) |>
+  theme_booktabs() |>
+  autofit() |>
+  align(align = "center", part = "all") |>
+  align(j = 1, align = "left", part = "all") |>
+  bold(part = "header") |>
+  valign(valign = "center", part = "all")
+
+
+save_as_docx(
+  "Metric model" = ft_metric,
+  path = "./gor-covid-19/final scripts/Tables/metric_model_table_loneliness.docx"
+)
+
+print(ft_metric)
+```
+
+
+```{r, results='asis'}
+cat("## scalar model\n\n")
+scalar_table <- table_results(
+  scalar.fit,
+  columns = c(
+    "label",
+    "est_sig",
+    "se",
+    "pval",
+    "confint"
+  ),
+  digits = 3
+)
+
+
+ft_scalar <- flextable(scalar_table) |>
+  theme_booktabs() |>
+  autofit() |>
+  align(align = "center", part = "all") |>
+  align(j = 1, align = "left", part = "all") |>
+  bold(part = "header") |>
+  valign(valign = "center", part = "all")
+
+
+save_as_docx(
+  "Scalar model" = ft_scalar,
+  path = "./gor-covid-19/final scripts/Tables/scalar_model_table_loneliness.docx"
+)
+
+print(ft_scalar)
+
+```
+
+
+
+##Saving factor predictions of scalar model
+
+```{r}
+predictions <- lavPredict(scalar.fit)
+print(nrow(predictions))
+print(nrow(df))
+df_pred <- cbind(df, as.data.frame(predictions))
+df_pred %>%  
+  write_csv("./gor-covid-19/final scripts/data/04_data_wide_loneliness.csv")
+```
+
+##Saving factor predictions long format
+
+```{r}
+df_pred_long <- df_pred %>%
+  select(
+    Koppelnummer,
+    el_w3, el_w4, el_w5, el_w6,
+    el_w7, el_w8, el_w10, el_w12
+  ) %>%
+  pivot_longer(
+    cols = starts_with("el_w"),
+    names_to = "Ronde",
+    names_prefix = "el_w",
+    values_to = "el_fct"
+  ) %>%
+  mutate(wave = as.integer(Ronde)) %>%  
+  write_csv("./gor-covid-19/final scripts/data/04_loneliness_fct.csv")
+```
+
+

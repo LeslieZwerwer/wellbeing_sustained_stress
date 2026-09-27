@@ -1,0 +1,554 @@
+---
+title: "04_longitudinal_measurement_invariance_wb"
+output: word_document
+date: "2026-08-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "C:/Users/P269380/Documents/GOR covid-19/")
+```
+
+## Loading packages and data
+
+
+
+```{r cars}
+rm(list = ls())
+
+library(tidyverse)
+library(lavaan) 
+library(semTools)
+library(tidySEM)
+library(flextable)
+library(officer)
+library(knitr)
+source("./gor-covid-19/final scripts/check_admissibility.R")
+
+# Load the data
+
+df <- read_csv("./gor-covid-19/final scripts/data/03_data_wide.csv")
+```
+
+## Configural model
+
+
+
+```{r}
+config.model <- '
+  # Factoren per wave
+  wb_w3  =~ NA*PBMHK301_w3  + PBMHK302_w3  + PBMHK303_w3  + PBMHK304_w3  + PBMHK305_w3
+  wb_w4  =~ NA*PBMHK301_w4  + PBMHK302_w4  + PBMHK303_w4  + PBMHK304_w4  + PBMHK305_w4
+  wb_w5  =~ NA*PBMHK301_w5  + PBMHK302_w5  + PBMHK303_w5  + PBMHK304_w5  + PBMHK305_w5
+  wb_w6  =~ NA*PBMHK301_w6  + PBMHK302_w6  + PBMHK303_w6  + PBMHK304_w6  + PBMHK305_w6
+  wb_w7  =~ NA*PBMHK301_w7  + PBMHK302_w7  + PBMHK303_w7  + PBMHK304_w7  + PBMHK305_w7
+  wb_w8  =~ NA*PBMHK301_w8  + PBMHK302_w8  + PBMHK303_w8  + PBMHK304_w8  + PBMHK305_w8
+  wb_w10 =~ NA*PBMHK301_w10 + PBMHK302_w10 + PBMHK303_w10 + PBMHK304_w10 + PBMHK305_w10
+  wb_w12 =~ NA*PBMHK301_w12 + PBMHK302_w12 + PBMHK303_w12 + PBMHK304_w12 + PBMHK305_w12
+
+  # Binnen-wave residual covariances
+  PBMHK301_w3  ~~ PBMHK302_w3
+  PBMHK301_w4  ~~ PBMHK302_w4
+  PBMHK301_w5  ~~ PBMHK302_w5
+  PBMHK301_w6  ~~ PBMHK302_w6
+  PBMHK301_w7  ~~ PBMHK302_w7
+  PBMHK301_w8  ~~ PBMHK302_w8
+  PBMHK301_w10 ~~ PBMHK302_w10
+  PBMHK301_w12 ~~ PBMHK302_w12
+
+
+  # Tussen-wave residual covariances per item 
+  # Volledige autocorrelatiestructuur: alle wave-paren per item
+
+  # --- PBMHK301 ---
+  PBMHK301_w3  ~~ PBMHK301_w4 + PBMHK301_w5 + PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w4  ~~ PBMHK301_w5 + PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w5  ~~ PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w6  ~~ PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w7  ~~ PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w8  ~~ PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w10 ~~ PBMHK301_w12
+
+  # --- PBMHK302 ---
+  PBMHK302_w3  ~~ PBMHK302_w4 + PBMHK302_w5 + PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w4  ~~ PBMHK302_w5 + PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w5  ~~ PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w6  ~~ PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w7  ~~ PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w8  ~~ PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w10 ~~ PBMHK302_w12
+
+  # --- PBMHK303 ---
+  PBMHK303_w3  ~~ PBMHK303_w4 + PBMHK303_w5 + PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w4  ~~ PBMHK303_w5 + PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w5  ~~ PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w6  ~~ PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w7  ~~ PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w8  ~~ PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w10 ~~ PBMHK303_w12
+
+  # --- PBMHK304 ---
+  PBMHK304_w3  ~~ PBMHK304_w4 + PBMHK304_w5 + PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w4  ~~ PBMHK304_w5 + PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w5  ~~ PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w6  ~~ PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w7  ~~ PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w8  ~~ PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w10 ~~ PBMHK304_w12
+
+  # --- PBMHK305 ---
+  PBMHK305_w3  ~~ PBMHK305_w4 + PBMHK305_w5 + PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w4  ~~ PBMHK305_w5 + PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w5  ~~ PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w6  ~~ PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w7  ~~ PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w8  ~~ PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w10 ~~ PBMHK305_w12
+'
+
+
+config.fit <- cfa(config.model,
+                data = df,
+                estimator = "MLR",
+                se = "robust",
+                missing = "fiml",
+                std.lv = TRUE)
+
+saveRDS(config.fit, "./gor-covid-19/final scripts/models/config_model.rds")
+
+#config.fit <- readRDS("./gor-covid-19/final scripts/models/config_model.rds")
+summary(config.fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+Check the modindices 
+
+```{r}
+print(head(modindices(config.fit, sort. = TRUE), 30))
+```
+
+Check admissability of the solution
+
+```{r}
+print(lavInspect(config.fit, "post.check"))
+res <- check_admissibility(config.fit)
+print(res)
+```
+
+##Metric invariance 
+
+
+
+```{r}
+metric.model <- '
+  # Factoren per wave
+  wb_w3  =~ NA*L1*PBMHK301_w3  + L2*PBMHK302_w3  + L3*PBMHK303_w3  + L4*PBMHK304_w3  + L5*PBMHK305_w3
+  wb_w4  =~ NA*L1*PBMHK301_w4  + L2*PBMHK302_w4  + L3*PBMHK303_w4  + L4*PBMHK304_w4  + L5*PBMHK305_w4
+  wb_w5  =~ NA*L1*PBMHK301_w5  + L2*PBMHK302_w5  + L3*PBMHK303_w5  + L4*PBMHK304_w5  + L5*PBMHK305_w5
+  wb_w6  =~ NA*L1*PBMHK301_w6  + L2*PBMHK302_w6  + L3*PBMHK303_w6  + L4*PBMHK304_w6  + L5*PBMHK305_w6
+  wb_w7  =~ NA*L1*PBMHK301_w7  + L2*PBMHK302_w7  + L3*PBMHK303_w7  + L4*PBMHK304_w7  + L5*PBMHK305_w7
+  wb_w8  =~ NA*L1*PBMHK301_w8  + L2*PBMHK302_w8  + L3*PBMHK303_w8  + L4*PBMHK304_w8  + L5*PBMHK305_w8
+  wb_w10 =~ NA*L1*PBMHK301_w10 + L2*PBMHK302_w10 + L3*PBMHK303_w10 + L4*PBMHK304_w10 + L5*PBMHK305_w10
+  wb_w12 =~ NA*L1*PBMHK301_w12 + L2*PBMHK302_w12 + L3*PBMHK303_w12 + L4*PBMHK304_w12 + L5*PBMHK305_w12
+
+  #constrain variance to 1 
+  
+  wb_w3  ~~ 1*wb_w3 
+
+  
+  # Binnen-wave residual covariances
+  PBMHK301_w3  ~~ PBMHK302_w3
+  PBMHK301_w4  ~~ PBMHK302_w4
+  PBMHK301_w5  ~~ PBMHK302_w5
+  PBMHK301_w6  ~~ PBMHK302_w6
+  PBMHK301_w7  ~~ PBMHK302_w7
+  PBMHK301_w8  ~~ PBMHK302_w8
+  PBMHK301_w10 ~~ PBMHK302_w10
+  PBMHK301_w12 ~~ PBMHK302_w12
+
+
+  # Tussen-wave residual covariances per item 
+  # Volledige autocorrelatiestructuur: alle wave-paren per item
+
+  # --- PBMHK301 ---
+  PBMHK301_w3  ~~ PBMHK301_w4 + PBMHK301_w5 + PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w4  ~~ PBMHK301_w5 + PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w5  ~~ PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w6  ~~ PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w7  ~~ PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w8  ~~ PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w10 ~~ PBMHK301_w12
+
+  # --- PBMHK302 ---
+  PBMHK302_w3  ~~ PBMHK302_w4 + PBMHK302_w5 + PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w4  ~~ PBMHK302_w5 + PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w5  ~~ PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w6  ~~ PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w7  ~~ PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w8  ~~ PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w10 ~~ PBMHK302_w12
+
+  # --- PBMHK303 ---
+  PBMHK303_w3  ~~ PBMHK303_w4 + PBMHK303_w5 + PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w4  ~~ PBMHK303_w5 + PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w5  ~~ PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w6  ~~ PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w7  ~~ PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w8  ~~ PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w10 ~~ PBMHK303_w12
+
+  # --- PBMHK304 ---
+  PBMHK304_w3  ~~ PBMHK304_w4 + PBMHK304_w5 + PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w4  ~~ PBMHK304_w5 + PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w5  ~~ PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w6  ~~ PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w7  ~~ PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w8  ~~ PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w10 ~~ PBMHK304_w12
+
+  # --- PBMHK305 ---
+  PBMHK305_w3  ~~ PBMHK305_w4 + PBMHK305_w5 + PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w4  ~~ PBMHK305_w5 + PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w5  ~~ PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w6  ~~ PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w7  ~~ PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w8  ~~ PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w10 ~~ PBMHK305_w12
+'
+
+metric.fit <- cfa(metric.model,
+              data = df,
+              estimator = "MLR",
+              se = "robust",
+              missing = "fiml")
+
+saveRDS(metric.fit, "./gor-covid-19/final scripts/models/metric_model.rds")
+
+#metric.fit <- readRDS("./gor-covid-19/final scripts/models/metric_model.rds")
+
+summary(metric.fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+Check admissability
+
+
+```{r}
+print(lavInspect(metric.fit, "post.check"))
+res <- check_admissibility(metric.fit)
+print(res)
+```
+
+Compare fit with configural model 
+
+```{r}
+fit.comparison.metric <- compareFit(config.fit, metric.fit)
+summary(fit.comparison.metric)
+```
+
+##Scalar invariance 
+
+
+
+```{r}
+scalar.model <- '
+ # Factoren per wave
+  wb_w3  =~ NA*L1*PBMHK301_w3  + L2*PBMHK302_w3  + L3*PBMHK303_w3  + L4*PBMHK304_w3  + L5*PBMHK305_w3
+  wb_w4  =~ NA*L1*PBMHK301_w4  + L2*PBMHK302_w4  + L3*PBMHK303_w4  + L4*PBMHK304_w4  + L5*PBMHK305_w4
+  wb_w5  =~ NA*L1*PBMHK301_w5  + L2*PBMHK302_w5  + L3*PBMHK303_w5  + L4*PBMHK304_w5  + L5*PBMHK305_w5
+  wb_w6  =~ NA*L1*PBMHK301_w6  + L2*PBMHK302_w6  + L3*PBMHK303_w6  + L4*PBMHK304_w6  + L5*PBMHK305_w6
+  wb_w7  =~ NA*L1*PBMHK301_w7  + L2*PBMHK302_w7  + L3*PBMHK303_w7  + L4*PBMHK304_w7  + L5*PBMHK305_w7
+  wb_w8  =~ NA*L1*PBMHK301_w8  + L2*PBMHK302_w8  + L3*PBMHK303_w8  + L4*PBMHK304_w8  + L5*PBMHK305_w8
+  wb_w10 =~ NA*L1*PBMHK301_w10 + L2*PBMHK302_w10 + L3*PBMHK303_w10 + L4*PBMHK304_w10 + L5*PBMHK305_w10
+  wb_w12 =~ NA*L1*PBMHK301_w12 + L2*PBMHK302_w12 + L3*PBMHK303_w12 + L4*PBMHK304_w12 + L5*PBMHK305_w12
+
+  
+  #intercepts equal
+  PBMHK301_w3 ~ int1*1
+  PBMHK301_w4 ~ int1*1
+  PBMHK301_w5 ~ int1*1
+  PBMHK301_w6 ~ int1*1
+  PBMHK301_w7 ~ int1*1
+  PBMHK301_w8 ~ int1*1
+  PBMHK301_w10 ~ int1*1
+  PBMHK301_w12 ~ int1*1
+  
+  PBMHK302_w3 ~ int2*1
+  PBMHK302_w4 ~ int2*1
+  PBMHK302_w5 ~ int2*1
+  PBMHK302_w6 ~ int2*1
+  PBMHK302_w7 ~ int2*1
+  PBMHK302_w8 ~ int2*1
+  PBMHK302_w10 ~ int2*1
+  PBMHK302_w12 ~ int2*1
+  
+  
+  PBMHK303_w3 ~ int3*1
+  PBMHK303_w4 ~ int3*1
+  PBMHK303_w5 ~ int3*1
+  PBMHK303_w6 ~ int3*1
+  PBMHK303_w7 ~ int3*1
+  PBMHK303_w8 ~ int3*1
+  PBMHK303_w10 ~ int3*1
+  PBMHK303_w12 ~ int3*1
+  
+  PBMHK304_w3 ~ int4*1
+  PBMHK304_w4 ~ int4*1
+  PBMHK304_w5 ~ int4*1
+  PBMHK304_w6 ~ int4*1
+  PBMHK304_w7 ~ int4*1
+  PBMHK304_w8 ~ int4*1
+  PBMHK304_w10 ~ int4*1
+  PBMHK304_w12 ~ int4*1
+  
+  PBMHK305_w3 ~ int5*1
+  PBMHK305_w4 ~ int5*1
+  PBMHK305_w5 ~ int5*1
+  PBMHK305_w6 ~ int5*1
+  PBMHK305_w7 ~ int5*1
+  PBMHK305_w8 ~ int5*1
+  PBMHK305_w10 ~ int5*1
+  PBMHK305_w12 ~ int5*1
+  
+  
+  #factor means. The first set to 0 the rest freely estimated
+  wb_w3  ~ 0*1
+  wb_w4  ~ NA*1
+  wb_w5  ~ NA*1
+  wb_w6  ~ NA*1
+  wb_w7  ~ NA*1
+  wb_w8  ~ NA*1
+  wb_w10 ~ NA*1
+  wb_w12 ~ NA*1
+
+  #constrain variance to 1 
+  
+  wb_w3  ~~ 1*wb_w3 
+
+  # Binnen-wave residual covariances
+  PBMHK301_w3  ~~ PBMHK302_w3
+  PBMHK301_w4  ~~ PBMHK302_w4
+  PBMHK301_w5  ~~ PBMHK302_w5
+  PBMHK301_w6  ~~ PBMHK302_w6
+  PBMHK301_w7  ~~ PBMHK302_w7
+  PBMHK301_w8  ~~ PBMHK302_w8
+  PBMHK301_w10 ~~ PBMHK302_w10
+  PBMHK301_w12 ~~ PBMHK302_w12
+
+
+  # Tussen-wave residual covariances per item 
+  # Volledige autocorrelatiestructuur: alle wave-paren per item
+
+  # --- PBMHK301 ---
+  PBMHK301_w3  ~~ PBMHK301_w4 + PBMHK301_w5 + PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w4  ~~ PBMHK301_w5 + PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w5  ~~ PBMHK301_w6 + PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w6  ~~ PBMHK301_w7 + PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w7  ~~ PBMHK301_w8 + PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w8  ~~ PBMHK301_w10 + PBMHK301_w12
+  PBMHK301_w10 ~~ PBMHK301_w12
+
+  # --- PBMHK302 ---
+  PBMHK302_w3  ~~ PBMHK302_w4 + PBMHK302_w5 + PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w4  ~~ PBMHK302_w5 + PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w5  ~~ PBMHK302_w6 + PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w6  ~~ PBMHK302_w7 + PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w7  ~~ PBMHK302_w8 + PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w8  ~~ PBMHK302_w10 + PBMHK302_w12
+  PBMHK302_w10 ~~ PBMHK302_w12
+
+  # --- PBMHK303 ---
+  PBMHK303_w3  ~~ PBMHK303_w4 + PBMHK303_w5 + PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w4  ~~ PBMHK303_w5 + PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w5  ~~ PBMHK303_w6 + PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w6  ~~ PBMHK303_w7 + PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w7  ~~ PBMHK303_w8 + PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w8  ~~ PBMHK303_w10 + PBMHK303_w12
+  PBMHK303_w10 ~~ PBMHK303_w12
+
+  # --- PBMHK304 ---
+  PBMHK304_w3  ~~ PBMHK304_w4 + PBMHK304_w5 + PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w4  ~~ PBMHK304_w5 + PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w5  ~~ PBMHK304_w6 + PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w6  ~~ PBMHK304_w7 + PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w7  ~~ PBMHK304_w8 + PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w8  ~~ PBMHK304_w10 + PBMHK304_w12
+  PBMHK304_w10 ~~ PBMHK304_w12
+
+  # --- PBMHK305 ---
+  PBMHK305_w3  ~~ PBMHK305_w4 + PBMHK305_w5 + PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w4  ~~ PBMHK305_w5 + PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w5  ~~ PBMHK305_w6 + PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w6  ~~ PBMHK305_w7 + PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w7  ~~ PBMHK305_w8 + PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w8  ~~ PBMHK305_w10 + PBMHK305_w12
+  PBMHK305_w10 ~~ PBMHK305_w12
+  '
+
+scalar.fit <- cfa(scalar.model,
+              data = df,
+              estimator = "MLR",
+              se = "robust",
+              missing = "fiml")
+
+saveRDS(scalar.fit, "./gor-covid-19/final scripts/models/scalar_model.rds")
+
+#scalar.fit <- readRDS("./gor-covid-19/final scripts/models/scalar_model.rds")
+summary(scalar.fit, fit.measures = TRUE, standardized = TRUE)
+```
+
+
+Check admissibility 
+
+```{r}
+print(lavInspect(scalar.fit, "post.check"))
+
+res <- check_admissibility(scalar.fit)
+print(res)
+```
+
+Compare the metric fit with the scalar fit
+
+```{r}
+fit.comparison.metric <- compareFit(metric.fit, scalar.fit)
+summary(fit.comparison.metric)
+```
+
+##Comparing all fits for table 
+```{r}
+comp <- compareFit(config.fit, metric.fit, scalar.fit)
+summary(comp)
+```
+
+##Tables with loadings etc. 
+
+```{r, results='asis'}
+cat("## Configural model\n\n")
+config_table <- table_results(
+  config.fit,
+  columns = c(
+    "label",
+    "est_sig",
+    "se",
+    "pval",
+    "confint"
+  ),
+  digits = 3
+)
+
+
+
+ft_config <- flextable(config_table) |>
+  theme_booktabs() |>
+  autofit() |>
+  align(align = "center", part = "all") |>
+  align(j = 1, align = "left", part = "all") |>
+  bold(part = "header") |>
+  valign(valign = "center", part = "all")
+
+
+save_as_docx(
+  "Configural model" = ft_config,
+  path = "./gor-covid-19/final scripts/Tables/configural_model_table.docx"
+)
+print(ft_config)
+```
+
+
+
+```{r, results='asis'}
+cat("## Metric model\n\n")
+metric_table <- table_results(
+  metric.fit,
+  columns = c(
+    "label",
+    "est_sig",
+    "se",
+    "pval",
+    "confint"
+  ),
+  digits = 3
+)
+
+
+ft_metric <- flextable(metric_table) |>
+  theme_booktabs() |>
+  autofit() |>
+  align(align = "center", part = "all") |>
+  align(j = 1, align = "left", part = "all") |>
+  bold(part = "header") |>
+  valign(valign = "center", part = "all")
+
+
+save_as_docx(
+  "Metric model" = ft_metric,
+  path = "./gor-covid-19/final scripts/Tables/metric_model_table.docx"
+)
+
+print(ft_metric)
+```
+
+
+```{r, results='asis'}
+cat("## scalar model\n\n")
+scalar_table <- table_results(
+  scalar.fit,
+  columns = c(
+    "label",
+    "est_sig",
+    "se",
+    "pval",
+    "confint"
+  ),
+  digits = 3
+)
+
+
+ft_scalar <- flextable(scalar_table) |>
+  theme_booktabs() |>
+  autofit() |>
+  align(align = "center", part = "all") |>
+  align(j = 1, align = "left", part = "all") |>
+  bold(part = "header") |>
+  valign(valign = "center", part = "all")
+
+
+save_as_docx(
+  "Scalar model" = ft_scalar,
+  path = "./gor-covid-19/final scripts/Tables/scalar_model_table.docx"
+)
+
+print(ft_scalar)
+
+```
+
+
+
+##Saving factor predictions of scalar model
+
+```{r}
+predictions <- lavPredict(scalar.fit)
+print(nrow(predictions))
+print(nrow(df))
+df_pred <- cbind(df, as.data.frame(predictions))
+df_pred %>%  
+  write_csv("./gor-covid-19/final scripts/data/04_data_wide.csv")
+```
+
+##Saving factor predictions long format
+
+```{r}
+df_pred_long <- df_pred %>%
+  select(
+    Koppelnummer,
+    wb_w3, wb_w4, wb_w5, wb_w6,
+    wb_w7, wb_w8, wb_w10, wb_w12
+  ) %>%
+  pivot_longer(
+    cols = starts_with("wb_w"),
+    names_to = "Ronde",
+    names_prefix = "wb_w",
+    values_to = "wb_fct"
+  ) %>%
+  mutate(wave = as.integer(Ronde)) %>%  
+  write_csv("./gor-covid-19/final scripts/data/04_wb_fct.csv")
+```
+
